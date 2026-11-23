@@ -18,6 +18,22 @@
   let html=pieces.join('');
   if(!html.startsWith('<!DOCTYPE html>')||!html.includes('</html>'))throw Error('Incomplete inventory content');
 
+  // Homeowner confirmed the village sideboard is in the dining room.
+  const storeAnchor="const STORE='christmas_v4_20261122';";
+  if(!html.includes(storeAnchor))throw Error('Inventory script entrypoint not found');
+  html=html.replace(storeAnchor,`const diningSideboard=DATA.zones.find(z=>z.id==='sideboard');
+if(diningSideboard)diningSideboard.area='Dining room';
+for(const item of DATA.items)if(item.zone==='sideboard')item.room='Dining room';
+`+storeAnchor);
+  const itemAnchor="const zones=DATA.zones;";
+  if(!html.includes(itemAnchor))throw Error('Inventory item state not found');
+  html=html.replace(itemAnchor,"for(const item of items)if(item.zone==='sideboard')item.room='Dining room';"+String.fromCharCode(10)+itemAnchor);
+  const diningGroup="['Dining / adjoining display area',zones.filter(z=>z.area==='Dining / adjoining display area')],";
+  if(!html.includes(diningGroup))throw Error('Dining section not found');
+  html=html.replace(diningGroup,"['Dining room',zones.filter(z=>z.area==='Dining room')],"+String.fromCharCode(10)+" "+diningGroup);
+  html=html.replace('Dining / display area = village sideboard and china hutch.','Dining room = village sideboard beneath the picture frames; china hutch = adjoining display area.');
+  html=html.replace('The first walkthrough also shows the china hutch and long village sideboard in their adjoining display area.','The first walkthrough also shows the china hutch in its adjoining display area and the village sideboard beneath the picture frames in the dining room.');
+
   // Enrich the original 167-item archive without rewriting its 44 large chunks.
   try {
     const patchResponse=await fetch('kitchen/manifest.json');
