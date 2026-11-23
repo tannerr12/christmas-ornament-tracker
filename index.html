@@ -72,7 +72,7 @@ function buildKitchenThumbs(){
       .replace('23 display locations','27 display locations')
       .replace('40 photographs + 2 walkthroughs','44 photographs + 2 walkthroughs')
       .replace('167 item photo close-ups','167 detailed close-ups + 4 kitchen photographs')
-      .replace('showPage(\'house\');\n</script>',"showPage('house');buildKitchenThumbs();\n</script>");
+      .replace('showPage(\'house\');\n<\/script>',"showPage('house');buildKitchenThumbs();\n<\/script>");
     html=html.replace('The first walkthrough also shows the china hutch','Four kitchen photo references now cover the interior glass door, sink/window, honeycomb Santa and patio slider. The first walkthrough also shows the china hutch');
   } catch(err) {
     console.warn('Kitchen addendum unavailable; original inventory still loads.',err);
