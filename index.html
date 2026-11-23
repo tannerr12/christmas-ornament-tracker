@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Christmas Ornament Tracker</title>
+<style>body{background:#f6f5f0;color:#234538;font:16px system-ui,sans-serif;margin:8vh auto;max-width:650px;padding:24px}h1{font-size:1.6rem}.loader{width:100%;height:9px;border-radius:9px;background:#e1e7e1;overflow:hidden}.bar{height:100%;background:#2a6852;width:0;transition:width .2s}#error{color:#a32020;white-space:pre-wrap}</style></head>
+<body><h1>🎄 Christmas Ornament Tracker</h1><p id="status">Loading the photo inventory…</p><div class="loader"><div id="bar" class="bar"></div></div><p id="error"></p>
+<script>
+(async()=>{
+  const count=44, pieces=Array(count);
+  let loaded=0;
+  await Promise.all(Array.from({length:count},async(_,i)=>{
+    const path='chunks/part-'+String(i).padStart(3,'0')+'.txt';
+    const response=await fetch(path,{cache:'default'});
+    if(!response.ok)throw Error('Could not load '+path+' ('+response.status+')');
+    pieces[i]=await response.text();
+    document.getElementById('bar').style.width=(++loaded/count*100).toFixed(0)+'%';
+    document.getElementById('status').textContent='Loading photographs: '+loaded+' / '+count;
+  }));
+  const html=pieces.join('');
+  if(!html.startsWith('<!DOCTYPE html>')||!html.includes('</html>'))throw Error('Incomplete inventory content');
+  document.open();document.write(html);document.close();
+})().catch(e=>{
+document.getElementById('error').textContent='The tracker could not load. Refresh the page or check the GitHub Pages deployment. '+e.message;
+document.getElementById('status').textContent='Loading failed';
+})();
+</script></body></html>
