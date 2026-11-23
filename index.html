@@ -15,8 +15,69 @@
     document.getElementById('bar').style.width=(++loaded/count*100).toFixed(0)+'%';
     document.getElementById('status').textContent='Loading photographs: '+loaded+' / '+count;
   }));
-  const html=pieces.join('');
+  let html=pieces.join('');
   if(!html.startsWith('<!DOCTYPE html>')||!html.includes('</html>'))throw Error('Incomplete inventory content');
+
+  // Enrich the original 167-item archive without rewriting its 44 large chunks.
+  try {
+    const patchResponse=await fetch('kitchen/manifest.json');
+    if(!patchResponse.ok)throw Error('Kitchen manifest HTTP '+patchResponse.status);
+    const kitchen=await patchResponse.json();
+    if(!Array.isArray(kitchen.items)||!Array.isArray(kitchen.zones)||!kitchen.media)throw Error('Invalid kitchen inventory data');
+
+    const injection=`
+const KITCHEN_PATCH=${JSON.stringify(kitchen)};
+if(!DATA.zones.some(z=>z.id==='kitchen-frosted-door')){
+ DATA.zones.push(...KITCHEN_PATCH.zones);
+ DATA.items.push(...KITCHEN_PATCH.items);
+ DATA.photo_count=(DATA.photo_count||40)+4;
+ DATA.version='4.1';
+ const tvk=DATA.items.find(i=>i.id==='TVK-03');
+ if(tvk)Object.assign(tvk,{zone:'kitchen-ceiling',room:'Kitchen',photo:'1000017485.jpg',name:'Hanging honeycomb Santa carrying presents',category:'Hanging paper decoration',position:'Suspended from kitchen ceiling above range/cabinet area',x:49,y:54,confidence:'high',notes:'Same hanging figure seen earlier from TV-room kitchen doorway; re-linked instead of double counting.'});
+ const oldZone=DATA.zones.find(z=>z.id==='tv-kitchen-door');
+ if(oldZone)oldZone.count=2;
+ Object.assign(MEDIA,KITCHEN_PATCH.media);
+}
+function buildKitchenThumbs(){
+ for(const pic of Object.keys(KITCHEN_PATCH.media)){
+  const im=new Image();
+  im.onload=()=>{
+   const its=DATA.items.filter(i=>i.photo===pic);
+   for(const item of its){
+    const w=im.naturalWidth,h=im.naturalHeight;
+    const sw=Math.min(w,w*0.33),sh=Math.min(h,h*0.29);
+    const sx=Math.max(0,Math.min(w-sw,w*item.x/100-sw/2));
+    const sy=Math.max(0,Math.min(h-sh,h*item.y/100-sh/2));
+    const cv=document.createElement('canvas');
+    cv.width=160;cv.height=160;
+    const cx=cv.getContext('2d');
+    if(!cx)continue;
+    cx.drawImage(im,sx,sy,sw,sh,0,0,160,160);
+    try{THUMBS[item.id]=cv.toDataURL('image/webp',0.75)}catch(e){}
+   }
+   if(page==='inventory')renderInventory();
+   else if(page==='photos')renderPhotos();
+  };
+  im.src=MEDIA[pic];
+ }
+}
+`;
+    const anchor="const STORE='christmas_v4_20261122';";
+    if(!html.includes(anchor))throw Error('Original inventory JavaScript entrypoint changed');
+    html=html.replace(anchor,injection+anchor);
+    const roomAnchor="['Living room',zones.filter(z=>z.area==='Living room')],";
+    if(!html.includes(roomAnchor))throw Error('House map room template changed');
+    html=html.replace(roomAnchor,roomAnchor+"\n ['Kitchen',zones.filter(z=>z.area==='Kitchen')],");
+    html=html.replace('167 labeled decorations & display components','203 labeled decorations & display components')
+      .replace('23 display locations','27 display locations')
+      .replace('40 photographs + 2 walkthroughs','44 photographs + 2 walkthroughs')
+      .replace('167 item photo close-ups','167 detailed close-ups + 4 kitchen photographs')
+      .replace('showPage(\'house\');\n</script>',"showPage('house');buildKitchenThumbs();\n</script>");
+    html=html.replace('The first walkthrough also shows the china hutch','Four kitchen photo references now cover the interior glass door, sink/window, honeycomb Santa and patio slider. The first walkthrough also shows the china hutch');
+  } catch(err) {
+    console.warn('Kitchen addendum unavailable; original inventory still loads.',err);
+  }
+
   document.open();document.write(html);document.close();
 })().catch(e=>{
 document.getElementById('error').textContent='The tracker could not load. Refresh the page or check the GitHub Pages deployment. '+e.message;

@@ -26,6 +26,7 @@ jobs:
           mkdir -p dist
           cp index.html dist/
           cp -R chunks dist/
+          cp -R kitchen dist/
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
